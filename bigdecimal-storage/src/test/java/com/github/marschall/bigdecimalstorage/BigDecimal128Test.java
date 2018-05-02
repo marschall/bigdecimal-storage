@@ -1,6 +1,8 @@
 package com.github.marschall.bigdecimalstorage;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -37,13 +39,13 @@ class BigDecimal128Test {
             new BigDecimal(BigInteger.ONE, -2),
             new BigDecimal(BigInteger.ONE, -2).negate()
             );
-}
+  }
 
   @ParameterizedTest
   @MethodSource("bigDecimals")
   void identity(BigDecimal bigDecimal) {
     BigDecimal128 bigDecimal128 = BigDecimal128.valueOf(bigDecimal);
-    assertEquals(0, bigDecimal.compareTo(bigDecimal128.toBigDecimal()));
+    assertThat(bigDecimal).isEqualByComparingTo(bigDecimal128.toBigDecimal());
   }
 
   @ParameterizedTest
