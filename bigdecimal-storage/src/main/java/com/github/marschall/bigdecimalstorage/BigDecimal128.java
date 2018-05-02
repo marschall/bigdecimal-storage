@@ -1,9 +1,20 @@
 package com.github.marschall.bigdecimalstorage;
 
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-public final class BigDecimal128 {
+/**
+ * A 128 bit integer can hold a scale of up to 8 (4 bits) and a
+ * 120 bit mantissa.
+ */
+public final class BigDecimal128 implements Serializable {
+
+  private static final long serialVersionUID = 1L;
 
   private static final int MAX_SCALE = 6;
 
@@ -117,6 +128,41 @@ public final class BigDecimal128 {
   @Override
   public String toString() {
     return this.toBigDecimal().toString();
+  }
+
+
+  private Object writeReplace() {
+    return new Ser128(this.highBits, this.lowBits);
+  }
+
+  static final class Ser128 implements Externalizable {
+
+    private long first;
+    private long second;
+
+    Ser128(long first, long second) {
+      this.first = first;
+      this.second = second;
+    }
+
+
+    private Object readResolve() {
+         return new BigDecimal128(this.first, this.second);
+    }
+
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+      out.writeLong(this.first);
+      out.writeLong(this.second);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException {
+      this.first = in.readLong();
+      this.second = in.readLong();
+    }
+
   }
 
 }
