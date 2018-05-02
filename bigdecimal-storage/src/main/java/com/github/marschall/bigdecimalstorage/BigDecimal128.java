@@ -18,7 +18,7 @@ public final class BigDecimal128 implements Serializable {
 
   private static final int MAX_SCALE = 6;
 
-//  private static final BigDecimal MAX_VALUE = 6;
+  //  private static final BigDecimal MAX_VALUE = 6;
 
   // 4 scale bits
   // 4 length bits
@@ -140,14 +140,21 @@ public final class BigDecimal128 implements Serializable {
     private long first;
     private long second;
 
+    /**
+     * Public default constructor for serialization.
+     */
+    public Ser128() {
+      this.first = 0L;
+      this.second = 0L;
+    }
+
     Ser128(long first, long second) {
       this.first = first;
       this.second = second;
     }
 
-
     private Object readResolve() {
-         return new BigDecimal128(this.first, this.second);
+      return new BigDecimal128(this.first, this.second);
     }
 
 
