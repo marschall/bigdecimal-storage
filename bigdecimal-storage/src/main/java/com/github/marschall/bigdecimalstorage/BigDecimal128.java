@@ -62,17 +62,21 @@ public final class BigDecimal128 implements Serializable {
     // the first 7 bytes go into the low bits of the first 64bit
     for (int i = 0; i < 7; i++) {
       if (i < twosComplement.length) {
-        long unsinedValue = (long) (0xFF & twosComplement[i]);
+        long unsinedValue = 0xFF & twosComplement[i];
         highBits |= unsinedValue << (48 - (i * 8));
+      } else {
+        break;
       }
     }
 
     // the last 8 bytes go into the low bits of the first 64bit
     long lowBits = 0;
     for (int i = 0; i < 8; i++) {
-      if (i + 7 < twosComplement.length) {
-        long unsinedValue = (long) (0xFF & twosComplement[i + 7]);
+      if ((i + 7) < twosComplement.length) {
+        long unsinedValue = 0xFF & twosComplement[i + 7];
         lowBits |= unsinedValue << (56 - (i * 8));
+      } else {
+        break;
       }
     }
     return new BigDecimal128(highBits, lowBits);
@@ -101,7 +105,7 @@ public final class BigDecimal128 implements Serializable {
 
     // all 8 bytes in the last 64 bits
     for (int i = 0; i < 8; i++) {
-      if (i + 7 < twosComplement.length) {
+      if ((i + 7) < twosComplement.length) {
         long unsinedValue = (this.lowBits >>> (56 - (i * 8))) & 0xFF;
         twosComplement[i + 7] = (byte) unsinedValue;
       }
@@ -118,8 +122,8 @@ public final class BigDecimal128 implements Serializable {
       return false;
     }
     BigDecimal128 other = (BigDecimal128) obj;
-    return this.highBits == other.highBits
-            && this.lowBits == other.lowBits;
+    return (this.highBits == other.highBits)
+            && (this.lowBits == other.lowBits);
   }
 
   @Override
