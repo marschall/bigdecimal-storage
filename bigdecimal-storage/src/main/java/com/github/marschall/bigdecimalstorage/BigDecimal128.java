@@ -22,8 +22,9 @@ public final class BigDecimal128 implements Serializable {
 
   // 4 scale bits
   // 4 length bits
-
+  // the first 56 bits
   private final long highBits;
+  // the last 64 bits
   private final long lowBits;
 
   private BigDecimal128(long highBits, long lowBits) {
@@ -53,6 +54,7 @@ public final class BigDecimal128 implements Serializable {
     }
     BigInteger bigInteger = unscaledValue(bigDecimal, scale);
     // we only support positive scales
+    // otherwise we would have to introduce a sign bit
     int correctedScale = Math.max(scale, 0);
     byte[] twosComplement = bigInteger.toByteArray();
     long highBits = getHighByte(correctedScale, twosComplement.length);
@@ -130,11 +132,13 @@ public final class BigDecimal128 implements Serializable {
     return this.toBigDecimal().toString();
   }
 
-
   private Object writeReplace() {
     return new Ser128(this.highBits, this.lowBits);
   }
 
+  /**
+   * Serialization proxy for {@link BigDecimal128}.
+   */
   static final class Ser128 implements Externalizable {
 
     private long first;
@@ -156,7 +160,6 @@ public final class BigDecimal128 implements Serializable {
     private Object readResolve() {
       return new BigDecimal128(this.first, this.second);
     }
-
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
