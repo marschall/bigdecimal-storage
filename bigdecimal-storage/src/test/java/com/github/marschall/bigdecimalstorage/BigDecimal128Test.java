@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,9 @@ class BigDecimal128Test {
             new BigDecimal("9999999999999.000009"),
             new BigDecimal("-9999999999999.000009"),
             new BigDecimal("1000000000000.000001"),
-            new BigDecimal("-1000000000000.000001")
+            new BigDecimal("-1000000000000.000001"),
+            new BigDecimal(BigInteger.ONE, -2),
+            new BigDecimal(BigInteger.ONE, -2).negate()
             );
 }
 
