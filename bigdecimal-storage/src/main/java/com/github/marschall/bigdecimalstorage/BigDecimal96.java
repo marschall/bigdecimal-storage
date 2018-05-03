@@ -14,9 +14,15 @@ import java.math.BigInteger;
  */
 public final class BigDecimal96 implements Serializable {
 
+  // TODO ONE and ZERO constants
+
   private static final long serialVersionUID = 1L;
 
   private static final int MAX_SCALE = 6;
+
+  private static final BigDecimal LONG_MAX_VALUE = BigDecimal.valueOf(Long.MAX_VALUE);
+
+  private static final BigDecimal LONG_MIN_VALUE = BigDecimal.valueOf(Long.MIN_VALUE);
 
   //  private static final BigDecimal MAX_VALUE = 6;
 
@@ -48,10 +54,34 @@ public final class BigDecimal96 implements Serializable {
     if (bigDecimal == null) {
       return null;
     }
+
     int scale = bigDecimal.scale();
-    if (scale > MAX_SCALE) {
-      throw new IllegalArgumentException("maximum scale allowed is: " + MAX_SCALE);
+    if ((scale <= 0)
+            && (bigDecimal.compareTo(LONG_MIN_VALUE) >= 0)
+            && (bigDecimal.compareTo(LONG_MAX_VALUE) <= 0)) {
+      // no decimal places and in the Long range
+      // in theory we could also call #stripTrailingZeros
+      return fromLongValue(bigDecimal);
+    } else {
+      if (scale > MAX_SCALE) {
+        throw new IllegalArgumentException("maximum scale allowed is: " + MAX_SCALE);
+      }
+      return fromTwosComplement(bigDecimal, scale);
     }
+  }
+
+  private static BigDecimal96 fromLongValue(BigDecimal bigDecimal) {
+    long highBits = getHighByte(0, 8);
+    long longValue = bigDecimal.longValueExact();
+
+    // the first 7 bytes go into the low bits of the first 64bit
+    highBits |= longValue >>> 8;
+    // the last 4 bytes go into the low bits of the first 64bit
+    int lowBits = (int) (longValue & 0xFF) << 24;
+    return new BigDecimal96(highBits, lowBits);
+  }
+
+  private static BigDecimal96 fromTwosComplement(BigDecimal bigDecimal, int scale) {
     BigInteger bigInteger = unscaledValue(bigDecimal, scale);
     // we only support positive scales
     // otherwise we would have to introduce a sign bit

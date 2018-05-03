@@ -46,6 +46,10 @@ class BigDecimal128Test {
             new BigDecimal("-1000000000000.000001"),
             new BigDecimal("1000000000000000001"),
             new BigDecimal("-1000000000000000001"),
+            new BigDecimal(Integer.MAX_VALUE),
+            new BigDecimal(Integer.MIN_VALUE),
+            new BigDecimal(Long.MAX_VALUE),
+            new BigDecimal(Long.MIN_VALUE),
             new BigDecimal(BigInteger.ONE, -2),
             new BigDecimal(BigInteger.ONE, -2).negate()
             );
