@@ -137,13 +137,13 @@ public final class BigDecimal96 implements Serializable {
   }
 
   private Object writeReplace() {
-    return new Ser128(this.highBits, this.lowBits);
+    return new Ser96(this.highBits, this.lowBits);
   }
 
   /**
    * Serialization proxy for {@link BigDecimal96}.
    */
-  static final class Ser128 implements Externalizable {
+  static final class Ser96 implements Externalizable {
 
     private long first;
     private int second;
@@ -151,12 +151,12 @@ public final class BigDecimal96 implements Serializable {
     /**
      * Public default constructor for serialization.
      */
-    public Ser128() {
+    public Ser96() {
       this.first = 0L;
       this.second = 0;
     }
 
-    Ser128(long first, int second) {
+    Ser96(long first, int second) {
       this.first = first;
       this.second = second;
     }
