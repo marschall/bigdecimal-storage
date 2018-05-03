@@ -16,8 +16,9 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.openjdk.jol.info.ClassLayout;
 
-class BigDecimal128Test {
+class BigDecimal96Test {
 
   static Stream<BigDecimal> bigDecimals() {
     return Stream.of(
@@ -54,8 +55,8 @@ class BigDecimal128Test {
   @ParameterizedTest
   @MethodSource("bigDecimals")
   void identity(BigDecimal bigDecimal) {
-    BigDecimal128 bigDecimal128 = BigDecimal128.valueOf(bigDecimal);
-    assertThat(bigDecimal).isEqualByComparingTo(bigDecimal128.toBigDecimal());
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(bigDecimal);
+    assertThat(bigDecimal).isEqualByComparingTo(bigDecimal96.toBigDecimal());
   }
 
   @ParameterizedTest
@@ -64,7 +65,7 @@ class BigDecimal128Test {
     byte[] serializedForm;
     try (ByteArrayOutputStream bos = new ByteArrayOutputStream(128);
          ObjectOutputStream oos = new ObjectOutputStream(bos)) {
-      oos.writeObject(BigDecimal128.valueOf(bigDecimal));
+      oos.writeObject(BigDecimal96.valueOf(bigDecimal));
       oos.flush();
 
       serializedForm = bos.toByteArray();
@@ -72,7 +73,7 @@ class BigDecimal128Test {
     BigDecimal readBack;
     try (ByteArrayInputStream bis = new ByteArrayInputStream(serializedForm);
          ObjectInputStream ois = new ObjectInputStream(bis)) {
-      readBack = ((BigDecimal128) ois.readObject()).toBigDecimal();
+      readBack = ((BigDecimal96) ois.readObject()).toBigDecimal();
     }
     assertEquals(0, bigDecimal.compareTo(readBack));
   }
@@ -80,6 +81,15 @@ class BigDecimal128Test {
   @Test
   void nullConstructor() {
     assertNull(BigDecimal128.valueOf(null));
+  }
+
+  @Test
+  void objectSize() {
+    ClassLayout classLayout96 = ClassLayout.parseClass(BigDecimal96.class);
+
+    ClassLayout classLayout128 = ClassLayout.parseClass(BigDecimal128.class);
+
+    assertThat(classLayout96.instanceSize()).isLessThan(classLayout128.instanceSize());
   }
 
 }
