@@ -123,6 +123,20 @@ public final class BigDecimal96 implements Serializable {
   public BigDecimal toBigDecimal() {
     int scale = this.getScale();
     int arrayLength = this.getArrayLength();
+
+    if ((scale == 0) && (arrayLength == 8)) {
+      return this.toBigDecimalFromLong();
+    } else {
+      return this.toBigDecimalFromTwosComplement(scale, arrayLength);
+    }
+  }
+
+  private BigDecimal toBigDecimalFromLong() {
+    long value = (this.highBits << 8) | (this.lowBits >>> 24);
+    return BigDecimal.valueOf(value);
+  }
+
+  private BigDecimal toBigDecimalFromTwosComplement(int scale, int arrayLength) {
     byte[] twosComplement = new byte[arrayLength];
 
     // the 7 low bytes in the first 64 bits
