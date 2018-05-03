@@ -1,17 +1,16 @@
 package com.github.marschall.bigdecimalstorage;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-@Disabled("implementation not ready")
 class BigDecimal64Test {
 
   static Stream<BigDecimal> bigDecimals() {
@@ -25,8 +24,12 @@ class BigDecimal64Test {
             new BigDecimal("-123456789012.123456"),
             new BigDecimal("999999999999.999999"),
             new BigDecimal("-999999999999.999999"),
+            new BigDecimal("999999999999.9"),
+            new BigDecimal("-999999999999.9"),
             new BigDecimal("111111111111.111111"),
             new BigDecimal("-111111111111.111111"),
+            new BigDecimal("111111111111.1"),
+            new BigDecimal("-111111111111.1"),
             new BigDecimal("999999999999.000009"),
             new BigDecimal("-999999999999.000009"),
             new BigDecimal("100000000000.000001"),
