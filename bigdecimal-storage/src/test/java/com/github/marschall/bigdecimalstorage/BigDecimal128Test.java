@@ -19,6 +19,42 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class BigDecimal128Test {
 
+  private static final byte[] MAX_POSITIVE = new byte[] {
+      (byte) 0x7F,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF
+  };
+
+  private static final byte[] MAX_NEGATIVE = new byte[] {
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF
+      };
+
   static Stream<BigDecimal> bigDecimals() {
     return Stream.of(
             BigDecimal.ZERO,
@@ -50,12 +86,20 @@ class BigDecimal128Test {
             new BigDecimal("-1000000000000.000001"),
             new BigDecimal("1000000000000000001"),
             new BigDecimal("-1000000000000000001"),
+            new BigDecimal(new BigInteger(MAX_POSITIVE)),
+            new BigDecimal(new BigInteger(MAX_POSITIVE), 2),
+            new BigDecimal(new BigInteger(MAX_POSITIVE), 6),
+            new BigDecimal(new BigInteger(MAX_NEGATIVE)),
+            new BigDecimal(new BigInteger(MAX_NEGATIVE), 2),
+            new BigDecimal(new BigInteger(MAX_NEGATIVE), 6),
             new BigDecimal(Integer.MAX_VALUE),
             new BigDecimal(Integer.MIN_VALUE),
             new BigDecimal(Long.MAX_VALUE),
             new BigDecimal(Long.MIN_VALUE),
             new BigDecimal(BigInteger.ONE, -2),
-            new BigDecimal(BigInteger.ONE, -2).negate()
+            new BigDecimal(BigInteger.ONE, -2).negate(),
+            new BigDecimal(BigInteger.ONE, -19),
+            new BigDecimal(BigInteger.ONE, -19).negate()
             );
   }
 

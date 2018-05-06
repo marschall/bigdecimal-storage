@@ -2,7 +2,9 @@ package com.github.marschall.bigdecimalstorage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -13,6 +15,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -35,6 +38,21 @@ class BigDecimal96Test {
   };
 
   private static final byte[] MAX_NEGATIVE = new byte[] {
+      (byte) 0x80,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00
+      };
+
+  private static final byte[] TOO_LARGE = new byte[] {
+      (byte) 0x01,
       (byte) 0xFF,
       (byte) 0xFF,
       (byte) 0xFF,
@@ -46,7 +64,7 @@ class BigDecimal96Test {
       (byte) 0xFF,
       (byte) 0xFF,
       (byte) 0xFF
-      };
+  };
 
   static Stream<BigDecimal> bigDecimals() {
     return Stream.of(
@@ -90,7 +108,19 @@ class BigDecimal96Test {
             new BigDecimal(Long.MAX_VALUE),
             new BigDecimal(Long.MIN_VALUE),
             new BigDecimal(BigInteger.ONE, -2),
-            new BigDecimal(BigInteger.ONE, -2).negate()
+            new BigDecimal(BigInteger.ONE, -2).negate(),
+            new BigDecimal(BigInteger.ONE, -19),
+            new BigDecimal(BigInteger.ONE, -19).negate()
+            );
+  }
+
+  static Stream<BigDecimal> invalidBigDecimals() {
+    return Stream.of(
+            new BigDecimal("0.1234567"),
+            new BigDecimal("-0.1234567"),
+            new BigDecimal(new BigInteger(TOO_LARGE)),
+            new BigDecimal(new BigInteger(TOO_LARGE), 2),
+            new BigDecimal(new BigInteger(TOO_LARGE), 6)
             );
   }
 
@@ -99,6 +129,31 @@ class BigDecimal96Test {
   void identity(BigDecimal bigDecimal) {
     BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(bigDecimal);
     assertThat(bigDecimal).isEqualByComparingTo(bigDecimal96.toBigDecimal());
+  }
+
+  @ParameterizedTest
+  @MethodSource("bigDecimals")
+  void testEquals(BigDecimal bigDecimal) {
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(bigDecimal);
+    assertEquals(bigDecimal96, bigDecimal96);
+    assertNotEquals(bigDecimal96, bigDecimal);
+    assertEquals(bigDecimal96, BigDecimal96.valueOf(bigDecimal));
+  }
+
+  @ParameterizedTest
+  @MethodSource("bigDecimals")
+  void testHashCode(BigDecimal bigDecimal) {
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(bigDecimal);
+    assertEquals(bigDecimal96.hashCode(), bigDecimal96.hashCode());
+    assertEquals(bigDecimal96.hashCode(), BigDecimal96.valueOf(bigDecimal).hashCode());
+  }
+
+  @ParameterizedTest
+  @MethodSource("bigDecimals")
+  @Disabled
+  void testToString(BigDecimal bigDecimal) {
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(bigDecimal);
+    assertEquals(bigDecimal96.toString(), bigDecimal.toString());
   }
 
   @ParameterizedTest
@@ -122,7 +177,13 @@ class BigDecimal96Test {
 
   @Test
   void nullConstructor() {
-    assertNull(BigDecimal128.valueOf(null));
+    assertNull(BigDecimal96.valueOf(null));
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidBigDecimals")
+  void illegalArguments(BigDecimal invalid) {
+    assertThrows(IllegalArgumentException.class, () -> BigDecimal96.valueOf(invalid));
   }
 
   @Test

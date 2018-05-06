@@ -24,6 +24,34 @@ public final class BigDecimal96 implements Serializable {
 
   private static final BigDecimal LONG_MIN_VALUE = BigDecimal.valueOf(Long.MIN_VALUE);
 
+  public static final BigDecimal MAX_VALUE = new BigDecimal(new BigInteger(new byte[] {
+      (byte) 0x7F,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF
+  }));
+
+  public static final BigDecimal MIN_VALUE = new BigDecimal(new BigInteger(new byte[] {
+      (byte) 0x80,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00
+  }));
+
   //  private static final BigDecimal MAX_VALUE = 6;
 
   // 4 scale bits
@@ -63,6 +91,12 @@ public final class BigDecimal96 implements Serializable {
       // we assume that in this case the BigDecimal is compact
       return fromLongValue(bigDecimal, scale);
     } else {
+      if (bigDecimal.compareTo(MIN_VALUE) < 0) {
+        throw new IllegalArgumentException("value too small");
+      }
+      if (bigDecimal.compareTo(MAX_VALUE) > 0) {
+        throw new IllegalArgumentException("value larget small");
+      }
       return fromTwosComplement(bigDecimal, scale);
     }
   }
@@ -103,6 +137,9 @@ public final class BigDecimal96 implements Serializable {
     // otherwise we would have to introduce a sign bit
     int correctedScale = Math.max(0, scale);
     byte[] twosComplement = bigInteger.toByteArray();
+    if (twosComplement.length > 11) {
+      throw new IllegalArgumentException("value too large");
+    }
 
     int highBits = getHighByte(correctedScale, twosComplement.length);
     // the first 3 bytes go into the low bits of the first 32bit
