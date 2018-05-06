@@ -59,11 +59,20 @@ public final class BigDecimal96 implements Serializable {
     if (scale > MAX_SCALE) {
       throw new IllegalArgumentException("maximum scale allowed is: " + MAX_SCALE);
     }
-    if (bigDecimal.precision() <= 18) {
+    if (fitsInto64bit(bigDecimal, scale)) {
       // we assume that in this case the BigDecimal is compact
       return fromLongValue(bigDecimal, scale);
     } else {
       return fromTwosComplement(bigDecimal, scale);
+    }
+  }
+
+  private static boolean fitsInto64bit(BigDecimal bigDecimal, int scale) {
+    int precision = bigDecimal.precision();
+    if (scale >= 0) {
+      return precision <= 18;
+    } else {
+      return (precision - scale) <= 18;
     }
   }
 
@@ -98,8 +107,8 @@ public final class BigDecimal96 implements Serializable {
     int highBits = getHighByte(correctedScale, twosComplement.length);
     // the first 3 bytes go into the low bits of the first 32bit
     for (int i = 0; i < 3; i++) {
-      if ((2 - i + 8) < twosComplement.length) {
-        int unsinedValue = 0xFF & twosComplement[twosComplement.length - 8 - 3 + i];
+      if (((2 - i) + 8) < twosComplement.length) {
+        int unsinedValue = 0xFF & twosComplement[(twosComplement.length - 8 - 3) + i];
         highBits |= unsinedValue << (8 * (2 - i));
       }
     }
@@ -140,9 +149,9 @@ public final class BigDecimal96 implements Serializable {
 
     // the 3 low bytes in the first 32 bits
     for (int i = 0; i < 3; i++) {
-      if ((2 - i + 8) < arrayLength) {
+      if (((2 - i) + 8) < arrayLength) {
         int unsinedValue = (this.highBits >>> (16 - (i * 8))) & 0xFF;
-        twosComplement[twosComplement.length - 8 - 3 + i] = (byte) unsinedValue;
+        twosComplement[(twosComplement.length - 8 - 3) + i] = (byte) unsinedValue;
       }
     }
 

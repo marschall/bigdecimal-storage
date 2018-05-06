@@ -56,28 +56,44 @@ public final class BigDecimal128 implements Serializable {
     }
 
     int scale = bigDecimal.scale();
-    if ((scale <= 0)
-            && (bigDecimal.compareTo(LONG_MIN_VALUE) >= 0)
-            && (bigDecimal.compareTo(LONG_MAX_VALUE) <= 0)) {
-      // no decimal places and in the Long range
-      // in theory we could also call #stripTrailingZeros
-      return fromLongValue(bigDecimal);
+    if (scale > MAX_SCALE) {
+      throw new IllegalArgumentException("maximum scale allowed is: " + MAX_SCALE);
+    }
+    if (fitsInto64bit(bigDecimal, scale)) {
+      // we assume that in this case the BigDecimal is compact
+      return fromLongValue(bigDecimal, scale);
     } else {
-      if (scale > MAX_SCALE) {
-        throw new IllegalArgumentException("maximum scale allowed is: " + MAX_SCALE);
-      }
       return fromTwosComplement(bigDecimal, scale);
     }
   }
 
-  private static BigDecimal128 fromLongValue(BigDecimal bigDecimal) {
-    long highBits = getHighByte(0, 8);
-    long longValue = bigDecimal.longValueExact();
+  private static boolean fitsInto64bit(BigDecimal bigDecimal, int scale) {
+    int precision = bigDecimal.precision();
+    if (scale >= 0) {
+      return precision <= 18;
+    } else {
+      return (precision - scale) <= 18;
+    }
+  }
 
-    // the first 7 bytes go into the low bits of the first 64bit
-    highBits |= longValue >>> 8;
-    // the last 4 bytes go into the low bits of the first 64bit
-    long lowBits = (longValue & 0xFF) << 56;
+  private static BigDecimal128 fromLongValue(BigDecimal bigDecimal, int scale) {
+    BigDecimal unscaled;
+    if (scale > 0) {
+      // allocates a new BigDecimal which on HotSpot is the same size as a BigInteger
+      // if the BigDecimal is not compact (already has a BigInteger) then
+      // bigDecimal.unscaledValue().toByteArray()
+      // actually allocates less
+      // but if the BigDecimal is compact (we assume it is) when this
+      // saves a BigInteger and byte[] allocation
+      unscaled = bigDecimal.movePointRight(scale);
+    } else {
+      // for positive and 0 scales there are no decimal places
+      unscaled = bigDecimal;
+    }
+    // we do not support negative scales
+    long highBits = getHighByte(Math.max(0, scale), 8);
+    long lowBits = unscaled.longValueExact();
+
     return new BigDecimal128(highBits, lowBits);
   }
 
@@ -85,29 +101,23 @@ public final class BigDecimal128 implements Serializable {
     BigInteger bigInteger = unscaledValue(bigDecimal, scale);
     // we only support positive scales
     // otherwise we would have to introduce a sign bit
-    int correctedScale = Math.max(scale, 0);
+    int correctedScale = Math.max(0, scale);
     byte[] twosComplement = bigInteger.toByteArray();
-    long highBits = getHighByte(correctedScale, twosComplement.length);
 
+    long highBits = getHighByte(correctedScale, twosComplement.length);
     // the first 7 bytes go into the low bits of the first 64bit
     for (int i = 0; i < 7; i++) {
-      if (i < twosComplement.length) {
-        long unsinedValue = 0xFF & twosComplement[i];
-        highBits |= unsinedValue << (48 - (i * 8));
-      } else {
-        break;
+      if (((6 - i) + 8) < twosComplement.length) {
+        long unsinedValue = 0xFF & twosComplement[(twosComplement.length - 8 - 7) + i];
+        highBits |= unsinedValue << (8 * (6 - i));
       }
     }
 
-    // the last 8 bytes go into the low bits of the first 64bit
+    // the last 8 bytes go into the last 64bit
     long lowBits = 0;
     for (int i = 0; i < 8; i++) {
-      if ((i + 7) < twosComplement.length) {
-        long unsinedValue = 0xFF & twosComplement[i + 7];
-        lowBits |= unsinedValue << (56 - (i * 8));
-      } else {
-        break;
-      }
+      long unsinedValue = 0xFF & twosComplement[i + (twosComplement.length - 8)];
+      lowBits |= unsinedValue << (56 - (i * 8));
     }
     return new BigDecimal128(highBits, lowBits);
   }
@@ -121,39 +131,36 @@ public final class BigDecimal128 implements Serializable {
   }
 
   public BigDecimal toBigDecimal() {
-    int scale = this.getScale();
     int arrayLength = this.getArrayLength();
-
-    if ((scale == 0) && (arrayLength == 8)) {
+    if (arrayLength == 8) {
       return this.toBigDecimalFromLong();
     } else {
-      return this.toBigDecimalFromTwosComplement(scale, arrayLength);
+      return this.toBigDecimalFromTwosComplement(arrayLength);
     }
   }
 
   private BigDecimal toBigDecimalFromLong() {
-    long value = (this.highBits << 8) | (this.lowBits >>> 56);
-    return BigDecimal.valueOf(value);
+    int scale = this.getScale();
+    return BigDecimal.valueOf(this.lowBits, scale);
   }
 
-  private BigDecimal toBigDecimalFromTwosComplement(int scale, int arrayLength) {
+  private BigDecimal toBigDecimalFromTwosComplement(int arrayLength) {
     byte[] twosComplement = new byte[arrayLength];
 
     // the 7 low bytes in the first 64 bits
     for (int i = 0; i < 7; i++) {
-      if (i < twosComplement.length) {
+      if (((6 - i) + 8) < arrayLength) {
         long unsinedValue = (this.highBits >>> (48 - (i * 8))) & 0xFF;
-        twosComplement[i] = (byte) unsinedValue;
+        twosComplement[(twosComplement.length - 8 - 7) + i] = (byte) unsinedValue;
       }
     }
 
     // all 8 bytes in the last 64 bits
     for (int i = 0; i < 8; i++) {
-      if ((i + 7) < twosComplement.length) {
-        long unsinedValue = (this.lowBits >>> (56 - (i * 8))) & 0xFF;
-        twosComplement[i + 7] = (byte) unsinedValue;
-      }
+      long unsinedValue = (this.lowBits >>> (56 - (i * 8))) & 0xFF;
+      twosComplement[i + (arrayLength - 8)] = (byte) unsinedValue;
     }
+    int scale = this.getScale();
     return new BigDecimal(new BigInteger(twosComplement), scale);
   }
 
