@@ -3,10 +3,13 @@ package com.github.marschall.bigdecimalstorage;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.openjdk.jol.info.ClassLayout;
 import org.openjdk.jol.info.GraphLayout;
 
 
@@ -34,6 +37,17 @@ class BigDecimalObjectSizeTest {
 
     graphLayout = GraphLayout.parseInstance(bigDecimal.unscaledValue());
     assertThat(graphLayout128.totalSize()).isLessThan(graphLayout.totalSize());
+  }
+
+  @Test
+  void bigDecimalVsBigInteger() {
+    ClassLayout bigDecimalLayout = ClassLayout.parseClass(BigDecimal.class);
+    System.out.println(bigDecimalLayout.toPrintable());
+
+    ClassLayout bigIntegerLayout = ClassLayout.parseClass(BigInteger.class);
+    System.out.println(bigIntegerLayout.toPrintable());
+
+    System.out.println(ClassLayout.parseInstance(new byte[8]).toPrintable());;
   }
 
 }

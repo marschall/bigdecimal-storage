@@ -16,7 +16,7 @@ public final class BigDecimal96 implements Serializable {
 
   // TODO ONE and ZERO constants
 
-  private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 2L;
 
   private static final int MAX_SCALE = 6;
 
@@ -28,26 +28,26 @@ public final class BigDecimal96 implements Serializable {
 
   // 4 scale bits
   // 4 length bits
-  // the first 56 bits
-  private final long highBits;
-  // the last 32 bits
-  private final int lowBits;
+  // the first 24 bits
+  private final int highBits;
+  // the last 64 bits
+  private final long lowBits;
 
-  private BigDecimal96(long highBits, int lowBits) {
+  private BigDecimal96(int highBits, long lowBits) {
     this.highBits = highBits;
     this.lowBits = lowBits;
   }
 
   private int getScale() {
-    return (int) ((this.highBits >>> 60) & 0b1111);
+    return (this.highBits >>> 60) & 0b1111;
   }
 
   private int getArrayLength() {
-    return (int) ((this.highBits >>> 56) & 0b1111);
+    return (this.highBits >>> 56) & 0b1111;
   }
 
-  private static long getHighByte(int scale, int arrayLength) {
-    return (((long) Math.abs(scale)) << 60) | (((long) arrayLength) << 56);
+  private static int getHighByte(int scale, int arrayLength) {
+    return (Math.abs(scale) << 28) | (arrayLength << 24);
   }
 
   public static BigDecimal96 valueOf(BigDecimal bigDecimal) {
@@ -56,28 +56,35 @@ public final class BigDecimal96 implements Serializable {
     }
 
     int scale = bigDecimal.scale();
-    if ((scale <= 0)
-            && (bigDecimal.compareTo(LONG_MIN_VALUE) >= 0)
-            && (bigDecimal.compareTo(LONG_MAX_VALUE) <= 0)) {
-      // no decimal places and in the Long range
-      // in theory we could also call #stripTrailingZeros
-      return fromLongValue(bigDecimal);
+    if (scale > MAX_SCALE) {
+      throw new IllegalArgumentException("maximum scale allowed is: " + MAX_SCALE);
+    }
+    if (bigDecimal.precision() <= 18) {
+      // we assume that in this case the BigDecimal is compact
+      return fromLongValue(bigDecimal, scale);
     } else {
-      if (scale > MAX_SCALE) {
-        throw new IllegalArgumentException("maximum scale allowed is: " + MAX_SCALE);
-      }
       return fromTwosComplement(bigDecimal, scale);
     }
   }
 
-  private static BigDecimal96 fromLongValue(BigDecimal bigDecimal) {
-    long highBits = getHighByte(0, 8);
-    long longValue = bigDecimal.longValueExact();
+  private static BigDecimal96 fromLongValue(BigDecimal bigDecimal, int scale) {
+    BigDecimal unscaled;
+    if (scale > 0) {
+      // allocates a new BigDecimal which on HotSpot is the same size as a BigInteger
+      // if the BigDecimal is not compact (already has a BigInteger) then
+      // bigDecimal.unscaledValue().toByteArray()
+      // actually allocates less
+      // but if the BigDecimal is compact (we assume it is) when this
+      // saves a BigInteger and byte[] allocation
+      unscaled = bigDecimal.movePointRight(scale);
+    } else {
+      // for positive and 0 scales there are no decimal places
+      unscaled = bigDecimal;
+    }
+    // we do not support negative scales
+    int highBits = getHighByte(Math.max(0, scale), 8);
+    long lowBits = unscaled.longValueExact();
 
-    // the first 7 bytes go into the low bits of the first 64bit
-    highBits |= longValue >>> 8;
-    // the last 4 bytes go into the low bits of the first 64bit
-    int lowBits = (int) (longValue & 0xFF) << 24;
     return new BigDecimal96(highBits, lowBits);
   }
 
@@ -85,29 +92,23 @@ public final class BigDecimal96 implements Serializable {
     BigInteger bigInteger = unscaledValue(bigDecimal, scale);
     // we only support positive scales
     // otherwise we would have to introduce a sign bit
-    int correctedScale = Math.max(scale, 0);
+    int correctedScale = Math.max(0, scale);
     byte[] twosComplement = bigInteger.toByteArray();
-    long highBits = getHighByte(correctedScale, twosComplement.length);
 
-    // the first 7 bytes go into the low bits of the first 64bit
-    for (int i = 0; i < 7; i++) {
-      if (i < twosComplement.length) {
-        long unsinedValue = 0xFF & twosComplement[i];
-        highBits |= unsinedValue << (48 - (i * 8));
-      } else {
-        break;
+    int highBits = getHighByte(correctedScale, twosComplement.length);
+    // the first 3 bytes go into the low bits of the first 32bit
+    for (int i = 0; i < 3; i++) {
+      if ((2 - i + 8) < twosComplement.length) {
+        int unsinedValue = 0xFF & twosComplement[twosComplement.length - 8 - 3 + i];
+        highBits |= unsinedValue << (8 * (2 - i));
       }
     }
 
-    // the last 4 bytes go into the low bits of the first 64bit
-    int lowBits = 0;
-    for (int i = 0; i < 4; i++) {
-      if ((i + 7) < twosComplement.length) {
-        int unsinedValue = 0xFF & twosComplement[i + 7];
-        lowBits |= unsinedValue << (24 - (i * 8));
-      } else {
-        break;
-      }
+    // the last 8 bytes go into the last 64bit
+    long lowBits = 0;
+    for (int i = 0; i < 8; i++) {
+      long unsinedValue = 0xFF & twosComplement[i + (twosComplement.length - 8)];
+      lowBits |= unsinedValue << (56 - (i * 8));
     }
     return new BigDecimal96(highBits, lowBits);
   }
@@ -121,39 +122,36 @@ public final class BigDecimal96 implements Serializable {
   }
 
   public BigDecimal toBigDecimal() {
-    int scale = this.getScale();
     int arrayLength = this.getArrayLength();
-
-    if ((scale == 0) && (arrayLength == 8)) {
+    if (arrayLength == 8) {
       return this.toBigDecimalFromLong();
     } else {
-      return this.toBigDecimalFromTwosComplement(scale, arrayLength);
+      return this.toBigDecimalFromTwosComplement(arrayLength);
     }
   }
 
   private BigDecimal toBigDecimalFromLong() {
-    long value = (this.highBits << 8) | (this.lowBits >>> 24);
-    return BigDecimal.valueOf(value);
+    int scale = this.getScale();
+    return BigDecimal.valueOf(this.lowBits, scale);
   }
 
-  private BigDecimal toBigDecimalFromTwosComplement(int scale, int arrayLength) {
+  private BigDecimal toBigDecimalFromTwosComplement(int arrayLength) {
     byte[] twosComplement = new byte[arrayLength];
 
-    // the 7 low bytes in the first 64 bits
-    for (int i = 0; i < 7; i++) {
-      if (i < twosComplement.length) {
-        long unsinedValue = (this.highBits >>> (48 - (i * 8))) & 0xFF;
-        twosComplement[i] = (byte) unsinedValue;
+    // the 3 low bytes in the first 32 bits
+    for (int i = 0; i < 3; i++) {
+      if ((2 - i + 8) < arrayLength) {
+        int unsinedValue = (this.highBits >>> (16 - (i * 8))) & 0xFF;
+        twosComplement[twosComplement.length - 8 - 3 + i] = (byte) unsinedValue;
       }
     }
 
-    // all 8 bytes in the last 32 bits
-    for (int i = 0; i < 4; i++) {
-      if ((i + 7) < twosComplement.length) {
-        long unsinedValue = (this.lowBits >>> (56 - (i * 8))) & 0xFF;
-        twosComplement[i + 7] = (byte) unsinedValue;
-      }
+    // all 8 bytes in the last 64 bits
+    for (int i = 0; i < 8; i++) {
+      long unsinedValue = (this.lowBits >>> (56 - (i * 8))) & 0xFF;
+      twosComplement[i + (arrayLength - 8)] = (byte) unsinedValue;
     }
+    int scale = this.getScale();
     return new BigDecimal(new BigInteger(twosComplement), scale);
   }
 
@@ -172,7 +170,7 @@ public final class BigDecimal96 implements Serializable {
 
   @Override
   public int hashCode() {
-    return Long.hashCode(this.highBits) ^ Long.hashCode(this.lowBits);
+    return this.highBits ^ Long.hashCode(this.lowBits);
   }
 
   @Override
@@ -189,18 +187,18 @@ public final class BigDecimal96 implements Serializable {
    */
   static final class Ser96 implements Externalizable {
 
-    private long first;
-    private int second;
+    private int first;
+    private long second;
 
     /**
      * Public default constructor for serialization.
      */
     public Ser96() {
-      this.first = 0L;
-      this.second = 0;
+      this.first = 0;
+      this.second = 0L;
     }
 
-    Ser96(long first, int second) {
+    Ser96(int first, long second) {
       this.first = first;
       this.second = second;
     }
@@ -211,14 +209,14 @@ public final class BigDecimal96 implements Serializable {
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException {
-      out.writeLong(this.first);
-      out.writeInt(this.second);
+      out.writeInt(this.first);
+      out.writeLong(this.second);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException {
-      this.first = in.readLong();
-      this.second = in.readInt();
+      this.first = in.readInt();
+      this.second = in.readLong();
     }
 
   }
