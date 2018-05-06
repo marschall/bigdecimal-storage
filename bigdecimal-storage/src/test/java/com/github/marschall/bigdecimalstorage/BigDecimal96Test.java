@@ -15,7 +15,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -51,9 +50,24 @@ class BigDecimal96Test {
       (byte) 0x00
       };
 
-  private static final byte[] TOO_LARGE = new byte[] {
+  private static final byte[] TOO_LARGE_POSITIVE = new byte[] {
       (byte) 0x01,
       (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF
+  };
+
+  private static final byte[] TOO_LARGE_NEGATIVE = new byte[] {
+      (byte) 0xFF,
+      (byte) 0x7F,
       (byte) 0xFF,
       (byte) 0xFF,
       (byte) 0xFF,
@@ -118,9 +132,12 @@ class BigDecimal96Test {
     return Stream.of(
             new BigDecimal("0.1234567"),
             new BigDecimal("-0.1234567"),
-            new BigDecimal(new BigInteger(TOO_LARGE)),
-            new BigDecimal(new BigInteger(TOO_LARGE), 2),
-            new BigDecimal(new BigInteger(TOO_LARGE), 6)
+            new BigDecimal(new BigInteger(TOO_LARGE_POSITIVE)),
+            new BigDecimal(new BigInteger(TOO_LARGE_POSITIVE), 2),
+            new BigDecimal(new BigInteger(TOO_LARGE_POSITIVE), 6),
+            new BigDecimal(new BigInteger(TOO_LARGE_NEGATIVE)),
+            new BigDecimal(new BigInteger(TOO_LARGE_NEGATIVE), 2),
+            new BigDecimal(new BigInteger(TOO_LARGE_NEGATIVE), 6)
             );
   }
 
@@ -140,6 +157,20 @@ class BigDecimal96Test {
     assertEquals(bigDecimal96, BigDecimal96.valueOf(bigDecimal));
   }
 
+  @Test
+  void testEqualsSameSacle() {
+    BigDecimal one = BigDecimal.ONE;
+    BigDecimal two = BigDecimal.valueOf(2L);
+    assertNotEquals(BigDecimal96.valueOf(one), BigDecimal96.valueOf(two));
+  }
+
+  @Test
+  void testEqualsDifferentSacle() {
+    BigDecimal scaleZero = new BigDecimal("2");
+    BigDecimal scaleTwo = new BigDecimal("2.00");
+    assertNotEquals(BigDecimal96.valueOf(scaleZero), BigDecimal96.valueOf(scaleTwo));
+  }
+
   @ParameterizedTest
   @MethodSource("bigDecimals")
   void testHashCode(BigDecimal bigDecimal) {
@@ -150,10 +181,9 @@ class BigDecimal96Test {
 
   @ParameterizedTest
   @MethodSource("bigDecimals")
-  @Disabled
   void testToString(BigDecimal bigDecimal) {
     BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(bigDecimal);
-    assertEquals(bigDecimal96.toString(), bigDecimal.toString());
+    assertEquals(bigDecimal96.toString(), bigDecimal.toPlainString());
   }
 
   @ParameterizedTest

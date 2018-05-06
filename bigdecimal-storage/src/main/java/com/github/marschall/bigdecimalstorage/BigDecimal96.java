@@ -18,12 +18,14 @@ public final class BigDecimal96 implements Serializable {
 
   private static final long serialVersionUID = 2L;
 
-  private static final int MAX_SCALE = 6;
+  /**
+   * The largest supported scale.
+   */
+  public static final int MAX_SCALE = 6;
 
-  private static final BigDecimal LONG_MAX_VALUE = BigDecimal.valueOf(Long.MAX_VALUE);
-
-  private static final BigDecimal LONG_MIN_VALUE = BigDecimal.valueOf(Long.MIN_VALUE);
-
+  /**
+   * The largest supported value.
+   */
   public static final BigDecimal MAX_VALUE = new BigDecimal(new BigInteger(new byte[] {
       (byte) 0x7F,
       (byte) 0xFF,
@@ -38,6 +40,9 @@ public final class BigDecimal96 implements Serializable {
       (byte) 0xFF
   }));
 
+  /**
+   * The smallest supported value.
+   */
   public static final BigDecimal MIN_VALUE = new BigDecimal(new BigInteger(new byte[] {
       (byte) 0x80,
       (byte) 0x00,
