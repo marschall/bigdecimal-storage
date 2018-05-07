@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -214,6 +215,41 @@ class BigDecimal96Test {
   @MethodSource("invalidBigDecimals")
   void illegalArguments(BigDecimal invalid) {
     assertThrows(IllegalArgumentException.class, () -> BigDecimal96.valueOf(invalid));
+  }
+
+  @Test
+  void addDifferentScale() {
+    BigDecimal96 a = BigDecimal96.valueOf(new BigDecimal("0.1"));
+    BigDecimal96 b = BigDecimal96.valueOf(new BigDecimal("0.01"));
+    BigDecimal96 sum = BigDecimal96.valueOf(new BigDecimal("0.11"));
+    assertEquals(sum, a.add(b));
+    assertEquals(sum, b.add(a));
+  }
+
+  @Test
+  void addNegative() {
+    BigDecimal96 a = BigDecimal96.valueOf(new BigDecimal("1"));
+    BigDecimal96 b = BigDecimal96.valueOf(new BigDecimal("-3"));
+    BigDecimal96 sum = BigDecimal96.valueOf(new BigDecimal("-2"));
+    assertEquals(sum, a.add(b));
+    assertEquals(sum, b.add(a));
+  }
+
+  @Test
+  void addOverflows() {
+    BigDecimal96 a = BigDecimal96.valueOf(new BigDecimal("500000000000.000001"));
+    BigDecimal96 sum = BigDecimal96.valueOf(new BigDecimal("1000000000000.000002"));
+    assertEquals(sum, a.add(a));
+  }
+
+  @Test
+  void addOneLarger() {
+    fail("implement");
+  }
+
+  @Test
+  void addBothLarger() {
+    fail("implement");
   }
 
   @Test

@@ -16,6 +16,8 @@ public final class BigDecimal96 implements Serializable {
 
   // TODO ONE and ZERO constants
 
+  private static final int COMPACT_ARRAY_LENGTH = 8;
+
   private static final long serialVersionUID = 2L;
 
   /**
@@ -75,6 +77,10 @@ public final class BigDecimal96 implements Serializable {
 
   private int getArrayLength() {
     return (this.highBits >>> 56) & 0b1111;
+  }
+
+  private boolean isCompact() {
+    return this.getArrayLength() == COMPACT_ARRAY_LENGTH;
   }
 
   private static int getHighByte(int scale, int arrayLength) {
@@ -170,12 +176,67 @@ public final class BigDecimal96 implements Serializable {
     }
   }
 
+  public BigDecimal96 add(BigDecimal96 augend) {
+    if (!this.isCompact() || !augend.isCompact()) {
+      // we assume this happens only very rarely if at all
+      return this.addUsingBigDecimalMath(augend);
+    }
+    // TODO scale
+    if (this.getScale() != augend.getScale()) {
+
+    }
+    try {
+      long result = Math.addExact(this.lowBits, augend.lowBits);
+      return new BigDecimal96(this.highBits, result);
+    } catch (ArithmeticException e) {
+      // overflow we assume this happens only very rarely if at all
+      return this.addUsingBigDecimalMath(augend);
+    }
+
+  }
+
+  private BigDecimal96 addUsingBigDecimalMath(BigDecimal96 augend) {
+    return BigDecimal96.valueOf(this.toBigDecimal().add(augend.toBigDecimal()));
+  }
+
+  public BigDecimal96 subtract(BigDecimal96 subtrahend) {
+    if (this.isCompact() && subtrahend.isCompact()) {
+      // we assume this happens only very rarely if at all
+      return this.subtractUsingBigDecimalMath(subtrahend);
+    }
+    // TODO scale
+    if (this.getScale() != subtrahend.getScale()) {
+
+    }
+    try {
+      long result = Math.subtractExact(this.lowBits, subtrahend.lowBits);
+      return new BigDecimal96(this.highBits, result);
+    } catch (ArithmeticException e) {
+      // overflow we assume this happens only very rarely if at all
+      return this.subtractUsingBigDecimalMath(subtrahend);
+    }
+
+  }
+
+  private BigDecimal96 subtractUsingBigDecimalMath(BigDecimal96 subtrahend) {
+    return BigDecimal96.valueOf(this.toBigDecimal().subtract(subtrahend.toBigDecimal()));
+  }
+
+  public BigDecimal96 withScale(int newScale) {
+    if ((newScale < 0) || (newScale > MAX_SCALE)) {
+      throw new IllegalArgumentException("invalid scale");
+    }
+    int currentScale = this.getScale();
+    if (currentScale == newScale) {
+      return this;
+    }
+  }
+
   public BigDecimal toBigDecimal() {
-    int arrayLength = this.getArrayLength();
-    if (arrayLength == 8) {
+    if (this.isCompact()) {
       return this.toBigDecimalFromLong();
     } else {
-      return this.toBigDecimalFromTwosComplement(arrayLength);
+      return this.toBigDecimalFromTwosComplement();
     }
   }
 
@@ -184,7 +245,8 @@ public final class BigDecimal96 implements Serializable {
     return BigDecimal.valueOf(this.lowBits, scale);
   }
 
-  private BigDecimal toBigDecimalFromTwosComplement(int arrayLength) {
+  private BigDecimal toBigDecimalFromTwosComplement() {
+    int arrayLength = this.getArrayLength();
     byte[] twosComplement = new byte[arrayLength];
 
     // the 3 low bytes in the first 32 bits
