@@ -18,13 +18,52 @@ public final class BigDecimal128 implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
-  private static final int MAX_SCALE = 6;
+  /**
+   * The largest supported scale.
+   */
+  public static final int MAX_SCALE = 6;
 
-  private static final BigDecimal LONG_MAX_VALUE = BigDecimal.valueOf(Long.MAX_VALUE);
+  /**
+   * The largest supported value.
+   */
+  public static final BigDecimal MAX_VALUE = new BigDecimal(new BigInteger(new byte[] {
+      (byte) 0x7F,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF,
+      (byte) 0xFF
+  }));
 
-  private static final BigDecimal LONG_MIN_VALUE = BigDecimal.valueOf(Long.MIN_VALUE);
-
-  //  private static final BigDecimal MAX_VALUE = 6;
+  /**
+   * The smallest supported value.
+   */
+  public static final BigDecimal MIN_VALUE = new BigDecimal(new BigInteger(new byte[] {
+      (byte) 0x80,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00,
+      (byte) 0x00
+  }));
 
   // 4 scale bits
   // 4 length bits
@@ -63,6 +102,12 @@ public final class BigDecimal128 implements Serializable {
       // we assume that in this case the BigDecimal is compact
       return fromLongValue(bigDecimal, scale);
     } else {
+      if (bigDecimal.compareTo(MIN_VALUE) < 0) {
+        throw new IllegalArgumentException("value too small");
+      }
+      if (bigDecimal.compareTo(MAX_VALUE) > 0) {
+        throw new IllegalArgumentException("value larget small");
+      }
       return fromTwosComplement(bigDecimal, scale);
     }
   }
@@ -103,6 +148,9 @@ public final class BigDecimal128 implements Serializable {
     // otherwise we would have to introduce a sign bit
     int correctedScale = Math.max(0, scale);
     byte[] twosComplement = bigInteger.toByteArray();
+    if (twosComplement.length > 15) {
+      throw new IllegalArgumentException("value too large");
+    }
 
     long highBits = getHighByte(correctedScale, twosComplement.length);
     // the first 7 bytes go into the low bits of the first 64bit

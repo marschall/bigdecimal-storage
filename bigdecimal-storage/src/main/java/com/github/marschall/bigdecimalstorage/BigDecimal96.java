@@ -57,8 +57,6 @@ public final class BigDecimal96 implements Serializable {
       (byte) 0x00
   }));
 
-  //  private static final BigDecimal MAX_VALUE = 6;
-
   // 4 scale bits
   // 4 length bits
   // the first 24 bits
