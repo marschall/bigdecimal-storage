@@ -14,9 +14,13 @@ import java.math.BigInteger;
  */
 public final class BigDecimal128 implements Serializable {
 
+  // TODO Comparable
+
   // TODO ONE and ZERO constants
 
-  private static final long serialVersionUID = 1L;
+  private static final int COMPACT_ARRAY_LENGTH = 8;
+
+  private static final long serialVersionUID = 2L;
 
   /**
    * The largest supported scale.
@@ -85,6 +89,10 @@ public final class BigDecimal128 implements Serializable {
     return (int) ((this.highBits >>> 56) & 0b1111);
   }
 
+  private boolean isCompact() {
+    return this.getArrayLength() == COMPACT_ARRAY_LENGTH;
+  }
+ 
   private static long getHighByte(int scale, int arrayLength) {
     return (((long) Math.abs(scale)) << 60) | (((long) arrayLength) << 56);
   }
@@ -106,7 +114,7 @@ public final class BigDecimal128 implements Serializable {
         throw new IllegalArgumentException("value too small");
       }
       if (bigDecimal.compareTo(MAX_VALUE) > 0) {
-        throw new IllegalArgumentException("value larget small");
+        throw new IllegalArgumentException("value too large");
       }
       return fromTwosComplement(bigDecimal, scale);
     }
@@ -136,7 +144,7 @@ public final class BigDecimal128 implements Serializable {
       unscaled = bigDecimal;
     }
     // we do not support negative scales
-    long highBits = getHighByte(Math.max(0, scale), 8);
+    long highBits = getHighByte(Math.max(0, scale), COMPACT_ARRAY_LENGTH);
     long lowBits = unscaled.longValueExact();
 
     return new BigDecimal128(highBits, lowBits);
@@ -179,11 +187,10 @@ public final class BigDecimal128 implements Serializable {
   }
 
   public BigDecimal toBigDecimal() {
-    int arrayLength = this.getArrayLength();
-    if (arrayLength == 8) {
+    if (this.isCompact()) {
       return this.toBigDecimalFromLong();
     } else {
-      return this.toBigDecimalFromTwosComplement(arrayLength);
+      return this.toBigDecimalFromTwosComplement();
     }
   }
 
@@ -192,7 +199,8 @@ public final class BigDecimal128 implements Serializable {
     return BigDecimal.valueOf(this.lowBits, scale);
   }
 
-  private BigDecimal toBigDecimalFromTwosComplement(int arrayLength) {
+  private BigDecimal toBigDecimalFromTwosComplement() {
+    int arrayLength = this.getArrayLength();
     byte[] twosComplement = new byte[arrayLength];
 
     // the 7 low bytes in the first 64 bits
