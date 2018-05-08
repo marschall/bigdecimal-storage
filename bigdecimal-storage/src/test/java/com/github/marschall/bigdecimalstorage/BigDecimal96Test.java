@@ -181,6 +181,42 @@ class BigDecimal96Test {
     assertEquals(bigDecimal96.hashCode(), BigDecimal96.valueOf(bigDecimal).hashCode());
   }
 
+  @Test
+  void compareToEqual() {
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(new BigDecimal("123.456"));
+    assertEquals(0, bigDecimal96.compareTo(bigDecimal96));
+
+    assertEquals(0, bigDecimal96.compareTo(BigDecimal96.valueOf(new BigDecimal("123.4560"))));
+    assertEquals(0, BigDecimal96.valueOf(new BigDecimal("123.4560")).compareTo(bigDecimal96));
+  }
+
+  @Test
+  void compareToCompact() {
+    assertThat(BigDecimal96.valueOf(new BigDecimal("0.1")).compareTo(BigDecimal96.valueOf(new BigDecimal("0.11")))).isNegative();
+    assertThat(BigDecimal96.valueOf(new BigDecimal("0.11")).compareTo(BigDecimal96.valueOf(new BigDecimal("0.1")))).isPositive();
+
+    assertThat(BigDecimal96.valueOf(BigDecimal.valueOf(Long.MIN_VALUE)).compareTo(BigDecimal96.valueOf(BigDecimal.valueOf(Long.MAX_VALUE)))).isNegative();
+    assertThat(BigDecimal96.valueOf(BigDecimal.valueOf(Long.MAX_VALUE)).compareTo(BigDecimal96.valueOf(BigDecimal.valueOf(Long.MIN_VALUE)))).isPositive();
+  }
+
+  @Test
+  void compareToPowOverflows() {
+    BigDecimal96 bigger = BigDecimal96.valueOf(new BigDecimal("1000000000000000000"));
+    BigDecimal96 smaller = BigDecimal96.valueOf(new BigDecimal("0.000001"));
+
+    assertThat(bigger.compareTo(smaller)).isPositive();
+    assertThat(smaller.compareTo(bigger)).isNegative();
+  }
+
+  @Test
+  void compareToOneNotCompact() {
+    BigDecimal96 bigger = BigDecimal96.valueOf(new BigDecimal("10000000000000000000"));
+    BigDecimal96 smaller = BigDecimal96.valueOf(new BigDecimal("0.000001"));
+
+    assertThat(bigger.compareTo(smaller)).isPositive();
+    assertThat(smaller.compareTo(bigger)).isNegative();
+  }
+
   @ParameterizedTest
   @MethodSource("bigDecimals")
   void testToString(BigDecimal bigDecimal) {

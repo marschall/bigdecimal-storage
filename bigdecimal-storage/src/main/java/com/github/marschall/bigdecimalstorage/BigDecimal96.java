@@ -12,9 +12,7 @@ import java.math.BigInteger;
  * A 96 bit integer can hold a scale of up to 8 (4 bits) and a
  * 84 bit mantissa.
  */
-public final class BigDecimal96 implements Serializable {
-
-  // TODO Comparable
+public final class BigDecimal96 implements Comparable<BigDecimal96>, Serializable {
 
   // TODO ONE and ZERO constants
 
@@ -74,11 +72,11 @@ public final class BigDecimal96 implements Serializable {
   }
 
   private int getScale() {
-    return (this.highBits >>> 60) & 0b1111;
+    return (this.highBits >>> 28) & 0b1111;
   }
 
   private int getArrayLength() {
-    return (this.highBits >>> 56) & 0b1111;
+    return (this.highBits >>> 24) & 0b1111;
   }
 
   private boolean isCompact() {
@@ -342,6 +340,45 @@ public final class BigDecimal96 implements Serializable {
   @Override
   public int hashCode() {
     return this.highBits ^ Long.hashCode(this.lowBits);
+  }
+
+  @Override
+  public int compareTo(BigDecimal96 o) {
+    if (o == this) {
+      return 0;
+    }
+    if (this.isCompact() && o.isCompact()) {
+      return compareToUsingLongMath(o);
+    }
+    return compareToUsingBigDecimalMath(o);
+  }
+
+  private int compareToUsingLongMath(BigDecimal96 o) {
+    int ourScale = this.getScale();
+    int theirScale = o.getScale();
+    int operationScale = Math.max(ourScale, theirScale);
+    long a;
+    long b;
+    try {
+      if (ourScale < operationScale) {
+        a = pow10(this.lowBits, operationScale - ourScale);
+      } else {
+        a = this.lowBits;
+      }
+      if (theirScale < operationScale) {
+        b = pow10(o.lowBits, operationScale - theirScale);
+      } else {
+        b = o.lowBits;
+      }
+    } catch (ArithmeticException e) {
+      // overflow we assume this happens only very rarely if at all
+      return this.compareToUsingBigDecimalMath(o);
+    }
+    return Long.compare(a, b);
+  }
+
+  private int compareToUsingBigDecimalMath(BigDecimal96 o) {
+    return this.toBigDecimal().compareTo(o.toBigDecimal());
   }
 
   @Override
