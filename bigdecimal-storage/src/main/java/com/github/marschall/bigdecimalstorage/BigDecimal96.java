@@ -14,6 +14,8 @@ import java.math.BigInteger;
  */
 public final class BigDecimal96 implements Serializable {
 
+  // TODO Comparable
+
   // TODO ONE and ZERO constants
 
   private static final int COMPACT_ARRAY_LENGTH = 8;
