@@ -266,7 +266,9 @@ public final class BigDecimal96 implements Serializable {
     return BigDecimal96.valueOf(this.toBigDecimal().subtract(subtrahend.toBigDecimal()));
   }
 
-  public BigDecimal96 withScale(int newScale) {
+  BigDecimal96 withScale(int newScale) {
+    // TODO test for truncation with smaller scale
+    // TODO rename to setScale?
     if ((newScale < 0) || (newScale > MAX_SCALE)) {
       throw new IllegalArgumentException("invalid scale");
     }
@@ -274,6 +276,20 @@ public final class BigDecimal96 implements Serializable {
     if (currentScale == newScale) {
       return this;
     }
+    if (this.isCompact()) {
+      try {
+        long newValue = pow10(this.lowBits, newScale - currentScale);
+        return new BigDecimal96(getHighByte(newScale, COMPACT_ARRAY_LENGTH), newValue);
+      } catch (ArithmeticException e) {
+        // we assume this is rare
+        return withScaleUsingBigDecimalMath(newScale);
+      }
+    }
+    return withScaleUsingBigDecimalMath(newScale);
+  }
+
+  private BigDecimal96 withScaleUsingBigDecimalMath(int newScale) {
+    return BigDecimal96.valueOf(this.toBigDecimal().setScale(newScale));
   }
 
   public BigDecimal toBigDecimal() {

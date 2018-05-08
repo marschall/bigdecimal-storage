@@ -314,6 +314,44 @@ class BigDecimal96Test {
   }
 
   @Test
+  void withScaleNegative() {
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(BigDecimal.ONE);
+
+    assertThrows(IllegalArgumentException.class, () -> bigDecimal96.withScale(-1));
+  }
+
+  @Test
+  void withScaleTooLarge() {
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(BigDecimal.ONE);
+
+    assertThrows(IllegalArgumentException.class, () -> {
+      int newScale = BigDecimal96.MAX_SCALE + 1;
+      bigDecimal96.withScale(newScale);
+    });
+  }
+
+  @Test
+  void withScaleSameScale() {
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(new BigDecimal("1.1"));
+
+    assertSame(bigDecimal96, bigDecimal96.withScale(1));
+  }
+
+  @Test
+  void withScaleLarger() {
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(BigDecimal.ONE);
+
+    assertEquals(BigDecimal96.valueOf(new BigDecimal("1.000")), bigDecimal96.withScale(3));
+  }
+
+  @Test
+  void withScaleLargerNoLongerCompact() {
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(new BigDecimal("123456789012345678"));
+
+    assertEquals(BigDecimal96.valueOf(new BigDecimal("123456789012345678.000")), bigDecimal96.withScale(3));
+  }
+
+  @Test
   void objectSize() {
     ClassLayout classLayout96 = ClassLayout.parseClass(BigDecimal96.class);
 
