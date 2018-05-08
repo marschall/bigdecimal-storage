@@ -251,6 +251,8 @@ class BigDecimal96Test {
     assertEquals(sum, b.add(a));
 
     assertEquals(b, sum.subtract(a));
+    assertEquals(sum, a.subtract(b.negate()));
+    assertEquals(sum, b.subtract(a.negate()));
     assertEquals(BigDecimal96.valueOf(new BigDecimal("0.10")), sum.subtract(b));
   }
 
@@ -349,6 +351,13 @@ class BigDecimal96Test {
     BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(new BigDecimal("123456789012345678"));
 
     assertEquals(BigDecimal96.valueOf(new BigDecimal("123456789012345678.000")), bigDecimal96.withScale(3));
+  }
+
+  @Test
+  void withScaleLargerNotCompact() {
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(new BigDecimal("12345678901234567890"));
+
+    assertEquals(BigDecimal96.valueOf(new BigDecimal("12345678901234567890.000")), bigDecimal96.withScale(3));
   }
 
   @Test
