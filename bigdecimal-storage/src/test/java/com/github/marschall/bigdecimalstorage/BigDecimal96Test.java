@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -217,6 +219,29 @@ class BigDecimal96Test {
     assertThrows(IllegalArgumentException.class, () -> BigDecimal96.valueOf(invalid));
   }
 
+  @ParameterizedTest
+  @MethodSource("bigDecimals")
+  void negate(BigDecimal bigDecimal) {
+    assumeFalse(bigDecimal.unscaledValue().equals(BigDecimal96.MIN_VALUE.toBigInteger()));
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(bigDecimal);
+    BigDecimal96 bigDecimal96Negated = bigDecimal96.negate();
+
+    assertEquals(bigDecimal96, bigDecimal96Negated.negate());
+    assertEquals(0, bigDecimal96Negated.toBigDecimal().compareTo(bigDecimal.negate()));
+  }
+
+  @Test
+  void negateExtremeValueOverflows() {
+    BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(BigDecimal96.MIN_VALUE);
+    assertThrows(IllegalArgumentException.class, bigDecimal96::negate);
+  }
+
+  @Test
+  void negateZero() {
+    BigDecimal96 zero = BigDecimal96.valueOf(BigDecimal.ZERO);
+    assertSame(zero, zero.negate());
+  }
+
   @Test
   void addDifferentScale() {
     BigDecimal96 a = BigDecimal96.valueOf(new BigDecimal("0.1"));
@@ -243,13 +268,29 @@ class BigDecimal96Test {
   }
 
   @Test
+  void addPowOverflows() {
+    BigDecimal96 a = BigDecimal96.valueOf(new BigDecimal("100000000000000000"));
+    BigDecimal96 b = BigDecimal96.valueOf(new BigDecimal("0.000001"));
+    BigDecimal96 sum = BigDecimal96.valueOf(new BigDecimal("100000000000000000.000001"));
+    assertEquals(sum, a.add(b));
+    assertEquals(sum, b.add(a));
+  }
+
+  @Test
   void addOneLarger() {
-    fail("implement");
+    BigDecimal96 a = BigDecimal96.valueOf(new BigDecimal("9999999999999999999"));
+    BigDecimal96 b = BigDecimal96.valueOf(new BigDecimal("1"));
+    BigDecimal96 sum = BigDecimal96.valueOf(new BigDecimal("10000000000000000000"));
+    assertEquals(sum, a.add(b));
+    assertEquals(sum, b.add(a));
   }
 
   @Test
   void addBothLarger() {
-    fail("implement");
+    BigDecimal96 a = BigDecimal96.valueOf(new BigDecimal("5000000000000000000"));
+    BigDecimal96 sum = BigDecimal96.valueOf(new BigDecimal("10000000000000000000"));
+    assertEquals(sum, a.add(a));
+    assertEquals(sum, a.add(a));
   }
 
   @Test

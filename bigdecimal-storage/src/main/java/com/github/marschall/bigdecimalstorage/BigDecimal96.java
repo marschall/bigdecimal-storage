@@ -104,7 +104,7 @@ public final class BigDecimal96 implements Serializable {
         throw new IllegalArgumentException("value too small");
       }
       if (bigDecimal.compareTo(MAX_VALUE) > 0) {
-        throw new IllegalArgumentException("value larget small");
+        throw new IllegalArgumentException("value too large");
       }
       return fromTwosComplement(bigDecimal, scale);
     }
@@ -134,7 +134,7 @@ public final class BigDecimal96 implements Serializable {
       unscaled = bigDecimal;
     }
     // we do not support negative scales
-    int highBits = getHighByte(Math.max(0, scale), 8);
+    int highBits = getHighByte(Math.max(0, scale), COMPACT_ARRAY_LENGTH);
     long lowBits = unscaled.longValueExact();
 
     return new BigDecimal96(highBits, lowBits);
@@ -176,23 +176,55 @@ public final class BigDecimal96 implements Serializable {
     }
   }
 
+  public BigDecimal96 negate() {
+    // we could also name the method negated() but BigDecimal calls the method negate()
+    if (this.isCompact()) {
+      if (this.lowBits == 0L) {
+        return this;
+      }
+      if (this.lowBits == Long.MIN_VALUE) {
+        return BigDecimal96.valueOf(BigDecimal.valueOf(Long.MIN_VALUE).negate());
+      }
+      return new BigDecimal96(this.highBits, -this.lowBits);
+    }
+    return BigDecimal96.valueOf(this.toBigDecimal().negate());
+  }
+
   public BigDecimal96 add(BigDecimal96 augend) {
     if (!this.isCompact() || !augend.isCompact()) {
       // we assume this happens only very rarely if at all
       return this.addUsingBigDecimalMath(augend);
     }
-    // TODO scale
-    if (this.getScale() != augend.getScale()) {
-
-    }
+    int ourScale = this.getScale();
+    int theirScale = augend.getScale();
+    int operationScale = Math.max(ourScale, theirScale);
+    long a;
+    long b;
     try {
-      long result = Math.addExact(this.lowBits, augend.lowBits);
-      return new BigDecimal96(this.highBits, result);
+      if (ourScale < operationScale) {
+        a = pow10(this.lowBits, operationScale - ourScale);
+      } else {
+        a = this.lowBits;
+      }
+      if (theirScale < operationScale) {
+        b = pow10(augend.lowBits, operationScale - theirScale);
+      } else {
+        b = augend.lowBits;
+      }
+      long result = Math.addExact(a, b);
+      return new BigDecimal96(getHighByte(operationScale, COMPACT_ARRAY_LENGTH), result);
     } catch (ArithmeticException e) {
       // overflow we assume this happens only very rarely if at all
       return this.addUsingBigDecimalMath(augend);
     }
+  }
 
+  private static long pow10(long l, int exponent) {
+    long result = l;
+    for (int i = 0; i < exponent; i++) {
+      result = Math.multiplyExact(result, 10L);
+    }
+    return result;
   }
 
   private BigDecimal96 addUsingBigDecimalMath(BigDecimal96 augend) {
@@ -200,22 +232,32 @@ public final class BigDecimal96 implements Serializable {
   }
 
   public BigDecimal96 subtract(BigDecimal96 subtrahend) {
-    if (this.isCompact() && subtrahend.isCompact()) {
+    if (!this.isCompact() || !subtrahend.isCompact()) {
       // we assume this happens only very rarely if at all
       return this.subtractUsingBigDecimalMath(subtrahend);
     }
-    // TODO scale
-    if (this.getScale() != subtrahend.getScale()) {
-
-    }
+    int ourScale = this.getScale();
+    int theirScale = subtrahend.getScale();
+    int operationScale = Math.max(ourScale, theirScale);
+    long a;
+    long b;
     try {
-      long result = Math.subtractExact(this.lowBits, subtrahend.lowBits);
-      return new BigDecimal96(this.highBits, result);
+      if (ourScale < operationScale) {
+        a = pow10(this.lowBits, operationScale - ourScale);
+      } else {
+        a = this.lowBits;
+      }
+      if (theirScale < operationScale) {
+        b = pow10(subtrahend.lowBits, operationScale - theirScale);
+      } else {
+        b = subtrahend.lowBits;
+      }
+      long result = Math.subtractExact(a, b);
+      return new BigDecimal96(getHighByte(operationScale, COMPACT_ARRAY_LENGTH), result);
     } catch (ArithmeticException e) {
       // overflow we assume this happens only very rarely if at all
       return this.subtractUsingBigDecimalMath(subtrahend);
     }
-
   }
 
   private BigDecimal96 subtractUsingBigDecimalMath(BigDecimal96 subtrahend) {
