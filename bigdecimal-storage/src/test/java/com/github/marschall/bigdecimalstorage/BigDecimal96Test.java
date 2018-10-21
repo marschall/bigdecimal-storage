@@ -268,7 +268,7 @@ class BigDecimal96Test {
   @Test
   void negateExtremeValueOverflows() {
     BigDecimal96 bigDecimal96 = BigDecimal96.valueOf(BigDecimal96.MIN_VALUE);
-    assertThrows(IllegalArgumentException.class, bigDecimal96::negate);
+    assertThrows(ArithmeticException.class, bigDecimal96::negate);
   }
 
   @Test
@@ -306,7 +306,7 @@ class BigDecimal96Test {
   }
 
   @Test
-  void addSubtractOverflows() {
+  void addSubtractOverflowsLong() {
     BigDecimal96 a = BigDecimal96.valueOf(new BigDecimal("500000000000.000001"));
     BigDecimal96 sum = BigDecimal96.valueOf(new BigDecimal("1000000000000.000002"));
 
@@ -326,6 +326,15 @@ class BigDecimal96Test {
 
     assertEquals(sum, a.subtract(b.negate()));
     assertEquals(sum, b.subtract(a.negate()));
+  }
+
+  @Test
+  void addSubtractOverflows() {
+    BigDecimal96 a = BigDecimal96.valueOf(BigDecimal96.MAX_VALUE);
+    BigDecimal96 b = BigDecimal96.valueOf(BigDecimal.ONE);
+
+    assertThrows(ArithmeticException.class, () -> a.add(b));
+    assertThrows(ArithmeticException.class, () -> a.subtract(b.negate()));
   }
 
   @Test

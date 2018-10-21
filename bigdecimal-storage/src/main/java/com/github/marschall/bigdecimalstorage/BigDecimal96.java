@@ -111,6 +111,7 @@ public final class BigDecimal96 implements Comparable<BigDecimal96>, Serializabl
   }
 
   private static boolean fitsInto64bit(BigDecimal bigDecimal, int scale) {
+    // REVIEW some long of length 19 actually would fit
     int precision = bigDecimal.precision();
     if (scale >= 0) {
       return precision <= 18;
@@ -147,6 +148,8 @@ public final class BigDecimal96 implements Comparable<BigDecimal96>, Serializabl
     int correctedScale = Math.max(0, scale);
     byte[] twosComplement = bigInteger.toByteArray();
     if (twosComplement.length > 11) {
+      // REVIEW it would be better if we could test that earlier
+      // that would help us avoid catching IllegalArgumentException later
       throw new IllegalArgumentException("value too large");
     }
 
@@ -187,7 +190,11 @@ public final class BigDecimal96 implements Comparable<BigDecimal96>, Serializabl
       }
       return new BigDecimal96(this.highBits, -this.lowBits);
     }
-    return BigDecimal96.valueOf(this.toBigDecimal().negate());
+    try {
+      return BigDecimal96.valueOf(this.toBigDecimal().negate());
+    } catch (IllegalArgumentException e) {
+      throw new ArithmeticException();
+    }
   }
 
   public BigDecimal96 add(BigDecimal96 augend) {
@@ -228,7 +235,11 @@ public final class BigDecimal96 implements Comparable<BigDecimal96>, Serializabl
   }
 
   private BigDecimal96 addUsingBigDecimalMath(BigDecimal96 augend) {
-    return BigDecimal96.valueOf(this.toBigDecimal().add(augend.toBigDecimal()));
+    try {
+      return BigDecimal96.valueOf(this.toBigDecimal().add(augend.toBigDecimal()));
+    } catch (IllegalArgumentException e) {
+      throw new ArithmeticException();
+    }
   }
 
   public BigDecimal96 subtract(BigDecimal96 subtrahend) {
@@ -261,7 +272,11 @@ public final class BigDecimal96 implements Comparable<BigDecimal96>, Serializabl
   }
 
   private BigDecimal96 subtractUsingBigDecimalMath(BigDecimal96 subtrahend) {
-    return BigDecimal96.valueOf(this.toBigDecimal().subtract(subtrahend.toBigDecimal()));
+    try {
+      return BigDecimal96.valueOf(this.toBigDecimal().subtract(subtrahend.toBigDecimal()));
+    } catch (IllegalArgumentException e) {
+      throw new ArithmeticException();
+    }
   }
 
   BigDecimal96 withScale(int newScale) {
@@ -280,14 +295,18 @@ public final class BigDecimal96 implements Comparable<BigDecimal96>, Serializabl
         return new BigDecimal96(getHighByte(newScale, COMPACT_ARRAY_LENGTH), newValue);
       } catch (ArithmeticException e) {
         // we assume this is rare
-        return withScaleUsingBigDecimalMath(newScale);
+        return this.withScaleUsingBigDecimalMath(newScale);
       }
     }
-    return withScaleUsingBigDecimalMath(newScale);
+    return this.withScaleUsingBigDecimalMath(newScale);
   }
 
   private BigDecimal96 withScaleUsingBigDecimalMath(int newScale) {
-    return BigDecimal96.valueOf(this.toBigDecimal().setScale(newScale));
+    try {
+      return BigDecimal96.valueOf(this.toBigDecimal().setScale(newScale));
+    } catch (IllegalArgumentException e) {
+      throw new ArithmeticException();
+    }
   }
 
   public BigDecimal toBigDecimal() {
@@ -348,9 +367,9 @@ public final class BigDecimal96 implements Comparable<BigDecimal96>, Serializabl
       return 0;
     }
     if (this.isCompact() && o.isCompact()) {
-      return compareToUsingLongMath(o);
+      return this.compareToUsingLongMath(o);
     }
-    return compareToUsingBigDecimalMath(o);
+    return this.compareToUsingBigDecimalMath(o);
   }
 
   private int compareToUsingLongMath(BigDecimal96 o) {
